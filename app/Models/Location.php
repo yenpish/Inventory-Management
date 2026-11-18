@@ -55,6 +55,16 @@ class Location extends Model
         return $this->hasMany(self::class, 'parent_id');
     }
 
+    public function stockBalances(): HasMany
+    {
+        return $this->hasMany(StockBalance::class);
+    }
+
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
     /**
      * @return array<string, string>
      */

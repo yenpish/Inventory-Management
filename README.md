@@ -7,6 +7,42 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## M2 stock backend
+
+Use `App\StockManager::receive()`, `issue()`, and `adjust()` for operational stock writes. Each takes an existing `Item`, `Location`, and quantity, with optional named `user`, `reason`, `reference`, and `occurredAt` arguments. No stock HTTP endpoints are exposed; authentication and authorization must be added before exposing these operations to users.
+
+Quantities are integer values or plain decimal **strings**, with at most 14 integer digits and 4 decimal places (`DECIMAL(18,4)`). Floats, scientific notation, zero changes, excess precision, and out-of-range balances are rejected rather than rounded. Arithmetic uses scaled 64-bit integers. Receipts and issues take positive quantities; adjustments take signed deltas and require a nonblank reason. An adjustment records a change, not a replacement absolute balance. Movement dates use explicit UTC `DATETIME` storage at second precision; timezone-aware inputs are normalized to UTC, and omitted dates use the current time. Laravel stays in UTC, and both MySQL/MariaDB connection configurations explicitly set the session to `+00:00`. Frontends can convert UTC to `Asia/Kuala_Lumpur` for display.
+
+The forward migration `2026_11_18_035430_convert_stock_movement_occurred_at_to_utc_datetime` replaces the old TIMESTAMP column without changing the applied create migration. Conversion runs with a UTC session so existing **stored instants** are retained, removes implicit defaults/automatic updates, and restores the previous session timezone afterward. It does not guess the intended wall-clock date of any historically misinterpreted input. The correction is forward-only: rollback is explicitly refused because reverting would narrow the supported date range and risk reintroducing timestamp behavior. MariaDB DDL may lock the table and implicitly commits; plan a maintenance window for a large populated installation.
+
+Balances are unique per item/location. Movements retain their signed change, before/after quantities, occurrence time, user, reason, reference, and recording timestamps. Use correcting movements instead of editing history. Model operations reject movement updates/deletes and balance deletion/reassignment. Item/location relationships include archived records, and restrictive foreign keys preserve historical references, including responsible users. Factories produce test fixtures and are not operational stock entry points.
+
+### Transactions and concurrency
+
+Every `StockManager` operation uses one database transaction with up to three deadlock attempts. It reads and locks the item first, location second, and existing balance third, using `lockForUpdate()`. Eligibility is checked against these freshly read rows, not caller-side model state. The existing item row is the serialization point even for a first receipt with no balance row; the unique item/location key provides another safeguard. Operations for one item are intentionally serialized across locations. The balance write and movement insert commit or roll back together.
+
+These guarantees require transactional InnoDB tables and all stock writers using `StockManager` on the application's default connection. Direct SQL, bulk model updates/deletes, event-suppressed saves, and manual balance edits bypass the application safeguards. This is an application-level append-only history, not a database-enforced audit log. Calls are not idempotent: repeating a completed call records another movement, and reference text is not a unique idempotency key. Backdated movements do not recompute prior balances; before/after values describe recording order (movement ID), not occurrence-date order.
+
+The normal Pest suite is restricted to SQLite in memory, with no MariaDB connections configured. It verifies behavior, UTC normalization, date preservation, rollback, constraints, and ordinary fractional quantities. SQLite does not implement InnoDB row locks and uses numeric affinity rather than MariaDB's exact decimal storage.
+
+An explicit opt-in MariaDB test lives outside the default Feature/Unit suites. Run it from PowerShell with credentials already configured for a server where creating a disposable database is allowed:
+
+```powershell
+$env:M2_MARIADB_VERIFY = '1'
+try {
+    php artisan test --compact tests/MariaDbStockTest.php
+} finally {
+    Remove-Item Env:\M2_MARIADB_VERIFY
+}
+```
+
+The test generates its own `m2_stock_verify_<24 hex characters>` database, clears connection URLs, checks the actual selected database, and uses a server connection without a selected database for provisioning. It never accepts an existing database name and drops only the database successfully created by that run. It uses normal migrations, never database reset commands. Workers refuse any name outside the disposable pattern. Root-equivalent test-server privileges are needed for database provisioning and observing InnoDB lock waits; credentials are not embedded in test files. If the test process is forcibly killed, its disposable database may require manual cleanup; never substitute a working database.
+
+The integration test verifies populated legacy timestamp conversion (including a prior UTC+08 session), timezone restoration/reconnection, absence of automatic datetime updates, full decimal boundaries, rollback, and receipt/issue/adjustment history. Two separate PHP processes exercise first receipts and competing issues, explicitly observing the second connection in an InnoDB lock wait before releasing the first. These scenarios passed locally on MariaDB 10.4.32. Further load and failure testing can cover:
+
+- Exercise concurrent operations across locations, eligibility changes, and deadlock retries; verify successful calls have exactly one movement and failed calls leave no partial changes.
+- Exercise sustained contention, interrupted clients, and different MariaDB versions/isolation settings on a dedicated test server.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

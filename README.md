@@ -7,6 +7,41 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## M2.5A authentication and inventory workspace
+
+The interface uses Laravel 13's built-in session guard, Blade components, the existing Tailwind CSS 4/Vite stack, and small native JavaScript enhancements for mobile navigation and password visibility. No packages were added. Livewire can be considered when later workflows need persistent server-side interaction; the current read-only pages use shareable GET filters and conventional pagination.
+
+### Initial account and local setup
+
+The existing schema already contains the users and sessions tables; this milestone adds no migrations. Keep the application's database configured as `inventory_management`. With your existing dependencies installed, run:
+
+```shell
+npm run build
+php artisan app:create-admin
+```
+
+The account command verifies the database target and prompts interactively for a name, email, password, and confirmation. Password prompts disable visible fallback; no password argument or default credential is supported. Use a unique password of at least 12 characters containing upper/lowercase letters, a number, and a symbol, with a maximum of 72 UTF-8 bytes for bcrypt. The command refuses duplicate emails and never overwrites an existing account. Do not put passwords in source files, shell arguments, or seeders. No account is created automatically; the default seeder no longer creates a predictable demo user.
+
+Use your Herd site or `php artisan serve` to open the application. The root page and `/login` show the sign-in form. `/dashboard`, `/items`, `/categories`, `/locations`, `/stock-balances`, and `/movements` require authentication. There is no public registration, password reset, or account-management UI. The Artisan command provisions trusted operators; all provisioned accounts currently share the same **read-only** access. It does not assign an administrator role or imply permission to change stock. Granular authorization must be defined before M2.5B exposes write operations.
+
+For deployment, use HTTPS, `APP_ENV=production`, and `APP_DEBUG=false`; secure session cookies default to enabled in production. Keep `SESSION_DOMAIN` empty for host-only cookies and do not share session settings or an application key with Helpdesk. The default cookie name is specific to Inventory Management. Login uses generic failure messages, failed-attempt throttling by email/IP plus an IP request limit, session-ID regeneration, and Laravel's web/CSRF middleware. Logout is POST-only and invalidates the session/CSRF token. Protected views send private, no-store cache headers. No authentication or cookie exceptions are added.
+
+### Read-only pages and verification
+
+The dashboard uses actual current catalog counts, all recorded movement counts, retained positive/zero stock positions, recent movements in recording order, and category counts. It does not add quantities across different units. Listings support text search, relevant filters, and 20-row pagination. Catalog pages exclude archived records by default and can include them explicitly; balances and history retain archived item/location references. Quantities render as exact decimal strings. Display dates and movement date filters use `Asia/Kuala_Lumpur`; stored values remain UTC. A date range is inclusive of the selected local calendar days.
+
+The responsive layout includes a desktop sidebar with a compact icon-only mode, keyboard/hover tooltips, a native mobile drawer, an account menu, and reusable form/table/status/empty-state components. The sidebar preference is stored locally in the browser under `inventory.sidebar`; if storage is blocked, the toggle still works but cannot retain the preference after a reload. Tables switch to labelled rows according to their available container width. Stock history keeps quantities, staff, references and reasons available under each row's **View details** disclosure. Search forms work without JavaScript. Receiving, issuing, adjustments, and catalog editing are not exposed through HTTP in this milestone.
+
+Visible navigation uses **Current Stock** and **Stock History**. Internal route names, URLs, models and database names remain unchanged. The dashboard no longer contains a promotional banner, and page wording uses short labels and descriptions. Search/filter/pagination tests create fictional records for every listing in SQLite memory only; they never seed the working Inventory database.
+
+```shell
+php artisan test --compact
+vendor/bin/pint --dirty --format agent
+npm run build
+```
+
+The normal suite remains forced to SQLite in memory. Authentication/page tests cover route protection, login failures and throttling, session/logout behavior, real CSRF enforcement, safe account provisioning, escaped output, filtered/paginated results, Malaysia date boundaries, exact quantity display, and read-only browsing. Vite is disabled in PHP tests so they do not depend on generated build artifacts. The opt-in disposable MariaDB verification below remains separate. No test creates users or operational records in the working databases.
+
 ## M2 stock backend
 
 Use `App\StockManager::receive()`, `issue()`, and `adjust()` for operational stock writes. Each takes an existing `Item`, `Location`, and quantity, with optional named `user`, `reason`, `reference`, and `occurredAt` arguments. No stock HTTP endpoints are exposed; authentication and authorization must be added before exposing these operations to users.

@@ -1,0 +1,1 @@
+<x-select-filter name="status" label="Status" :placeholder="false" :value="request('status', 'current')" :options="['current' => 'Not archived', 'active' => 'Active', 'inactive' => 'Inactive', 'archived' => 'Archived', 'all' => 'All records']" />

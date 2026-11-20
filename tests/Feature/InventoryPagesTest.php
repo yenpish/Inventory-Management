@@ -5,6 +5,7 @@ use App\Models\ItemCategory;
 use App\Models\Location;
 use App\Models\StockBalance;
 use App\Models\User;
+use App\QuantityFormatter;
 use App\StockManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\Sequence;
@@ -46,7 +47,7 @@ test('dashboard metrics and recent activity reflect real records', function () {
     $this->actingAs(User::factory()->create())->get(route('dashboard'))->assertOk()
         ->assertViewHas('metrics', ['items' => 2, 'categories' => 1, 'locations' => 1, 'movements' => 1])
         ->assertViewHas('positiveBalances', 1)->assertViewHas('zeroBalances', 0)
-        ->assertSee($item->name)->assertSee('+2.5000');
+        ->assertSee($item->name)->assertSee('+2.5');
 });
 
 test('item searches combine category and tracking filters without leaking other rows', function () {
@@ -133,7 +134,7 @@ test('movement date filters use Malaysia days while displaying retained transact
     $this->actingAs(User::factory()->create(['name' => 'Fictional reader']))->get(route('movements.index', [
         'from' => '2026-11-18', 'to' => '2026-11-18', 'type' => 'issue', 'location' => $location->id,
     ]))->assertOk()->assertViewHas('movements', fn ($rows): bool => $rows->modelKeys() === [$match->id])
-        ->assertSee('-0.1250')->assertSee('1.8750')->assertSee('REQ-012')->assertSee($user->name)
+        ->assertSee('-0.125')->assertSee('1.875')->assertSee('REQ-012')->assertSee($user->name)
         ->assertSee('18 Nov 2026')->assertSee('00:00:00');
 });
 
@@ -192,7 +193,7 @@ test('stock-changing and catalog-changing HTTP actions are unavailable', functio
 
     $this->assertDatabaseCount('stock_movements', 0);
     $this->assertDatabaseCount('stock_balances', 0);
-})->with([['/stock-balances', 405], ['/movements', 405], ['/items', 405], ['/stock/receive', 404], ['/stock/issue', 404], ['/stock/adjust', 404]]);
+})->with([['/stock-balances', 405], ['/movements', 405], ['/items', 403], ['/stock/receive', 403], ['/stock/issue', 403], ['/stock/adjust', 404]]);
 
 test('category and location searches find fictional records by code', function (string $modelClass, string $route, string $viewKey) {
     $match = $modelClass::factory()->create(['code' => 'FIC-OFFICE', 'name' => 'Fictional office records']);
@@ -258,7 +259,7 @@ test('current stock combines location searches with in-stock and out-of-stock fi
         'q' => 'Fictional', 'location' => $north->id, 'balance' => $level,
     ]))->assertOk()->assertViewHas('balances', fn ($rows): bool => $rows->total() === 1
         && $rows->first()->location_id === $north->id && $rows->first()->quantity === $expectedQuantity)
-        ->assertSee($expectedQuantity);
+        ->assertSee(QuantityFormatter::format($expectedQuantity));
 })->with([['positive', '5.1250'], ['zero', '0.0000']]);
 
 test('current stock pagination keeps its search and stock-level filter', function () {
@@ -269,7 +270,7 @@ test('current stock pagination keeps its search and stock-level filter', functio
 
     $response = $this->actingAs(User::factory()->create())->get(route('balances.index', [
         'q' => 'Fictional copy', 'balance' => 'positive', 'page' => 2,
-    ]))->assertOk()->assertSee('1.1250');
+    ]))->assertOk()->assertSee('1.125');
 
     $paginator = $response->viewData('balances');
     expect($paginator->modelKeys())->toBe($records->slice(20)->values()->modelKeys());
@@ -295,7 +296,7 @@ test('stock history pagination combines reference, transaction, location and dat
     $response = $this->actingAs(User::factory()->create())->get(route('movements.index', [
         'q' => 'FIC-DELIVERY', 'type' => 'receipt', 'location' => $location->id,
         'from' => '2026-11-18', 'to' => '2026-11-18', 'page' => 2,
-    ]))->assertOk()->assertSee('+0.1250');
+    ]))->assertOk()->assertSee('+0.125');
 
     $paginator = $response->viewData('movements');
     expect($paginator->modelKeys())->toBe(array_reverse(array_slice($ids, 0, 5)));

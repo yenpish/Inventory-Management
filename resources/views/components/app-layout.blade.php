@@ -1,6 +1,6 @@
 @props(['title', 'description' => ''])
 <!DOCTYPE html>
-<html lang="en" data-sidebar="expanded">
+<html lang="en-GB" data-sidebar="expanded">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -31,7 +31,7 @@
                 <h1 class="min-w-0 text-lg font-semibold tracking-tight text-slate-950">{{ $title }}</h1>
             </div>
             <div class="flex shrink-0 items-center gap-3">
-                <span class="hidden text-xs text-slate-500 lg:block">View only</span>
+                <span class="hidden text-xs text-slate-500 lg:block">{{ auth()->user()->can('manage-inventory') ? 'Administrator' : 'View only' }}</span>
                 <details class="relative">
                     <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg p-1 focus-visible:outline-2 focus-visible:outline-emerald-600">
                         <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-800">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
@@ -48,8 +48,9 @@
                 </details>
             </div>
         </header>
-        <main id="main-content" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1600px] flex-1 px-3 py-5 sm:px-6 sm:py-6">
-            @if($description)<p class="mb-5 max-w-3xl text-sm leading-relaxed text-slate-500">{{ $description }}</p>@endif
+        <main id="main-content" tabindex="-1" class="mx-auto w-full min-w-0 max-w-[1600px] flex-1 px-3 py-4 sm:px-6 sm:py-5">
+            @if($description)<p class="mb-3 max-w-3xl text-sm leading-relaxed text-slate-500">{{ $description }}</p>@endif
+            @if(session('status'))<div role="status" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm break-words text-emerald-900">{{ session('status') }}</div>@endif
             {{ $slot }}
         </main>
     </div>

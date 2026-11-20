@@ -7,6 +7,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -68,7 +69,14 @@ class CreateAdministrator extends Command
             return self::FAILURE;
         }
 
-        User::create($validator->safe()->only(['name', 'email', 'password']));
+        if (! Schema::hasColumn('users', 'is_admin')) {
+            $this->error('Apply the pending inventory migrations first.');
+
+            return self::FAILURE;
+        }
+        $user = new User($validator->safe()->only(['name', 'email', 'password']));
+        $user->is_admin = true;
+        $user->save();
         $this->info('Inventory account created. The user can now sign in.');
 
         return self::SUCCESS;

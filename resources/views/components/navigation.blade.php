@@ -15,11 +15,16 @@
 </a>
 <nav aria-label="Main navigation" class="flex flex-col gap-1 px-3 py-2">
     @foreach ($navigation as [$label, $route, $icon])
+        @php
+            $isCurrent = request()->routeIs($route)
+                || ($route === 'balances.index' && request()->routeIs('stock.*'))
+                || (request()->routeIs('catalog.*') && $route === request()->route('kind').'.index');
+        @endphp
         <a href="{{ route($route) }}" aria-label="{{ $label }}" @unless($mobile) aria-describedby="nav-tip-{{ $loop->index }}" @endunless
-            @if(request()->routeIs($route)) aria-current="page" @endif
+            @if($isCurrent) aria-current="page" @endif
             @class(['sidebar-link relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300',
-                'bg-emerald-400/10 text-emerald-300 ring-1 ring-inset ring-emerald-400/15' => request()->routeIs($route),
-                'text-slate-400 hover:bg-white/5 hover:text-white' => ! request()->routeIs($route)])>
+                'bg-emerald-400/10 text-emerald-300 ring-1 ring-inset ring-emerald-400/15' => $isCurrent,
+                'text-slate-400 hover:bg-white/5 hover:text-white' => ! $isCurrent])>
             <x-icon :name="$icon" /><span class="sidebar-label">{{ $label }}</span>
             @unless($mobile)<span id="nav-tip-{{ $loop->index }}" role="tooltip" class="sidebar-tooltip">{{ $label }}</span>@endunless
         </a>

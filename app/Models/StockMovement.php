@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
 
-#[Fillable(['item_id', 'location_id', 'user_id', 'type', 'quantity_change', 'quantity_before', 'quantity_after', 'occurred_at', 'reason', 'reference'])]
+#[Fillable(['submission_key', 'item_id', 'location_id', 'user_id', 'type', 'quantity_change', 'quantity_before', 'quantity_after', 'occurred_at', 'reason', 'reference'])]
 class StockMovement extends Model
 {
     /** @use HasFactory<StockMovementFactory> */

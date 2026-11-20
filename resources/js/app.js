@@ -43,3 +43,40 @@ document.querySelector('[data-password-toggle]')?.addEventListener('click', (eve
     button.textContent = isVisible ? 'Hide' : 'Show';
     button.setAttribute('aria-pressed', String(isVisible));
 });
+
+document.querySelectorAll('form[data-submit-once]').forEach((form) => {
+    form.addEventListener('submit', () => {
+        form.setAttribute('aria-busy', 'true');
+        form.querySelectorAll('button[type="submit"], button:not([type])').forEach((button) => {
+            button.disabled = true;
+        });
+    });
+    window.addEventListener('pageshow', () => {
+        form.removeAttribute('aria-busy');
+        form.querySelectorAll('button').forEach((button) => {
+            if (form.querySelector('select[name="item_id"]')?.options.length > 1 &&
+                form.querySelector('select[name="location_id"]')?.options.length > 1) {
+                button.disabled = false;
+            }
+        });
+    });
+});
+
+document.querySelectorAll('[data-stock-form]').forEach((form) => {
+    const item = form.querySelector('[name="item_id"]');
+    const location = form.querySelector('[name="location_id"]');
+    const output = form.querySelector('[data-stock-available]');
+    const availability = JSON.parse(form.dataset.availability);
+    const updateAvailability = () => {
+        if (!item.value || !location.value) {
+            output.textContent = 'Available: —';
+            return;
+        }
+        const quantity = availability[item.value + ':' + location.value] ?? '0';
+        const unit = item.selectedOptions[0].dataset.unit;
+        output.textContent = 'Available: ' + quantity + ' ' + unit;
+    };
+    item.addEventListener('change', updateAvailability);
+    location.addEventListener('change', updateAvailability);
+    updateAvailability();
+});
